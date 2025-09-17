@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroCast - Crop Forecasting</title>
+    <style>
+        /* This CSS is for the main input page */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        :root {
+            --primary-color: #2ecc71; /* A vibrant green */
+            --background-color: #1a1a1a;
+            --card-background: #2c2c2c;
+            --text-color: #f0f0f0;
+            --input-background: #3a3a3a;
+            --border-color: #444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background-color: var(--card-background);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: var(--input-background);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.3);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>AgroCast 🌱</h1>
+            <p>Enter environmental data to forecast the optimal crop</p>
+        </header>
+
+        <form id="crop-form">
+            <div class="form-group">
+                <label for="place">Location</label>
+                <input type="text" id="place" placeholder="e.g., Salem, Tamil Nadu" required>
+            </div>
+            <div class="form-group">
+                <label for="area">Area (in acres)</label>
+                <input type="number" id="area" placeholder="e.g., 5" required>
+            </div>
+            <div class="form-group">
+                <label for="ph">Soil pH</label>
+                <input type="number" id="ph" step="0.1" placeholder="e.g., 6.5" required>
+            </div>
+            <div class="form-group">
+                <label for="temperature">Average Temperature (°C)</label>
+                <input type="number" id="temperature" placeholder="e.g., 28" required>
+            </div>
+            <div class="form-group">
+                <label for="moisture">Moisture Level</label>
+                <select id="moisture" required>
+                    <option value="" disabled selected>Select moisture level</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="soil-type">Soil Type</label>
+                <select id="soil-type" required>
+                    <option value="" disabled selected>Select soil type</option>
+                    <option value="Sandy">Sandy</option>
+                    <option value="Loamy">Loamy</option>
+                    <option value="Clay">Clay</option>
+                    <option value="Red">Red Soil</option>
+                </select>
+            </div>
+            <button type="submit" class="submit-btn">Forecast Crop</button>
+        </form>
+    </div>
+
+    <script>
+        const cropForm = document.getElementById('crop-form');
+
+        // Listen for form submission
+        cropForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // Get user input values
+            const area = parseFloat(document.getElementById('area').value);
+            const ph = parseFloat(document.getElementById('ph').value);
+            const temperature = parseInt(document.getElementById('temperature').value);
+            const moisture = document.getElementById('moisture').value;
+            const soilType = document.getElementById('soil-type').value;
+            
+            // Get the crop data object from the prediction function
+            const cropData = predictCrop(ph, temperature, moisture, soilType);
+
+            // MODIFIED: Pass the area to the new tab function
+            displayResultsInNewTab(cropData, area);
+        });
+        
+        // MODIFIED: The function now accepts 'area' as an argument
+        function displayResultsInNewTab(cropData, area) {
+            // Open a new blank tab
+            const newTab = window.open('', '_blank');
+
+            // MODIFIED: The HTML content now includes a section for the area
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>AgroCast - Prediction Result</title>
+                    <style>
+                        /* This CSS is for the new result tab */
+                        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+                        body {
+                            font-family: 'Roboto', sans-serif;
+                            background-color: #1a1a1a;
+                            color: #f0f0f0;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            padding: 20px;
+                        }
+                        .result-card {
+                            width: 100%;
+                            max-width: 800px;
+                            background-color: #2c2c2c;
+                            padding: 40px;
+                            border-radius: 12px;
+                            border-left: 5px solid #2ecc71;
+                        }
+                        h1 {
+                            color: #2ecc71;
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        h2 {
+                            color: #ccc;
+                            margin-top: 25px;
+                            margin-bottom: 10px;
+                            border-bottom: 1px solid #444;
+                            padding-bottom: 5px;
+                        }
+                        p {
+                            line-height: 1.6;
+                        }
+                        strong {
+                            color: #f0f0f0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="result-card">
+                        <h1>Forecast Result: ${cropData.name}</h1>
+                        
+                        <h2><strong>Cultivation Area</strong></h2>
+                        <p>This forecast is for an area of <strong>${area}</strong> acres.</p>
+                        
+                        <h2><strong>Recommended Fertilizers</strong></h2>
+                        <p>${cropData.fertilizer}</p>
+                        
+                        <h2><strong>Common Diseases & Remedies</strong></h2>
+                        <p>${cropData.remedies}</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // Write the HTML to the new tab and close the document stream
+            newTab.document.write(htmlContent);
+            newTab.document.close();
+        }
+
+        // --- Prediction Logic (No changes here) ---
+        function predictCrop(ph, temperature, moisture, soilType) {
+            const cropDatabase = {
+                rice: { name: 'Rice 🌾', fertilizer: 'Nitrogen (Urea, Ammonium Sulfate), Phosphorus, and Potassium.', remedies: 'For Blast disease, use fungicides like Tricyclazole. For Brown Spot, ensure proper water management and use Mancozeb spray.'},
+                maize: { name: 'Maize (Corn) 🌽', fertilizer: 'NPK (Nitrogen, Phosphorus, Potassium) and Zinc are crucial for high yield.', remedies: 'To prevent Corn Smut and Rust, plant resistant varieties and practice crop rotation. Remove and destroy infected plants.'},
+                groundnut: { name: 'Groundnut (Peanut) 🥜', fertilizer: 'Apply Gypsum during the flowering stage. Phosphorus and Potash are also important.', remedies: 'For Tikka Leaf Spot, spray with Mancozeb or Chlorothalonil at 15-day intervals.'},
+                millet: { name: 'Millet (Bajra) 🌱', fertilizer: 'Requires less fertilizer. A small amount of Nitrogen can boost initial growth.', remedies: 'Downy Mildew is common. Treat seeds with Metalaxyl before sowing and remove infected plants.'},
+                sugarcane: { name: 'Sugarcane 🎋', fertilizer: 'High requirement of Nitrogen and Potash. Apply in split doses.', remedies: 'Red Rot is a major disease. Use disease-free setts, practice crop rotation, and remove and burn affected clumps.'},
+                cotton: { name: 'Cotton ☁', fertilizer: 'Nitrogen and Phosphorus are key. Apply Nitrogen in stages.', remedies: 'The Bollworm is a major pest. Use pheromone traps to monitor and spray with neem oil or recommended insecticides.'},
+                wheat: { name: 'Wheat 🌾', fertilizer: 'A balanced dose of NPK is required based on soil testing.', remedies: 'Rust is a common disease. Dusting with Sulphur or spraying fungicides can be effective. Use rust-resistant varieties.'},
+                fallback: { name: 'No specific crop found 🤔', fertilizer: 'N/A', remedies: 'Please try different input values for a specific recommendation.'}
+            };
+
+            if (temperature > 30 && moisture === 'High' && soilType === 'Clay') return cropDatabase.rice;
+            if (ph >= 6.0 && ph <= 7.5 && soilType === 'Loamy' && temperature > 20) return cropDatabase.maize;
+            if (temperature > 25 && moisture === 'Medium' && soilType === 'Red') return cropDatabase.groundnut;
+            if (temperature > 22 && moisture === 'Low' && soilType === 'Sandy') return cropDatabase.millet;
+            if (ph >= 5.5 && ph <= 7.0 && soilType === 'Loamy' && temperature > 25) return cropDatabase.sugarcane;
+            if (ph >= 6.0 && ph <= 7.0 && temperature > 21 && moisture === 'High' && soilType === 'Clay') return cropDatabase.cotton;
+            
+            return cropDatabase.wheat;
+        }
+    </script>
+</body>
+</html>
