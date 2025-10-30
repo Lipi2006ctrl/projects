@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+expense_tracker.py
+------------------------------------
+A simple command-line expense tracker using CSV storage.
+Features:
+    ➤ Add new expense
+    ➤ View all expenses
+    ➤ Get monthly summary
+    ➤ Get category-wise summary
+------------------------------------
+Usage:
+    python expense_tracker.py
+"""
+
+import csv
+import os
+from datetime import datetime
+from collections import defaultdict
+
+FILE_NAME = "expenses.csv"
+
+def initialize_file():
+    """Create CSV file with headers if it doesn't exist."""
+    if not os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "w", newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Date", "Category", "Description", "Amount"])
+
+def add_expense():
+    """Add a new expense entry."""
+    date = input("Enter date (YYYY-MM-DD) or leave blank for today: ").strip()
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+    category = input("Enter category (Food, Travel, Bills, etc.): ").title().strip()
+    description = input("Enter description: ").strip()
+    amount = input("Enter amount (in ₹): ").strip()
+
+    try:
+        amount = float(amount)
+    except ValueError:
+        print("❌ Invalid amount. Please enter a number.")
+        return
+
+    with open(FILE_NAME, "a", newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([date, category, description, amount])
+    print("✅ Expense added successfully!")
+
+def view_expenses():
+    """Display all recorded expenses."""
+    if not os.path.exists(FILE_NAME):
+        print("No expenses found yet.")
+        return
+
+    with open(FILE_NAME, "r") as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header
+        rows = list(reader)
+
+    if not rows:
+        print("No expenses recorded yet.")
+        return
+
+    print("\n📘 All Expenses:")
+    print("=" * 60)
+    total = 0
+    for row in rows:
+        print(f"{row[0]:<12} | {row[1]:<12} | {row[2]:<25} | ₹{float(row[3]):>7.2f}")
+        total += float(row[3])
+    print("=" * 60)
+    print(f"💵 Total Spent: ₹{total:.2f}")
+
+def monthly_summary():
+    """Show monthly total expense."""
+    month = input("Enter month (YYYY-MM): ").strip()
+    total = 0
+    count = 0
+
+    with open(FILE_NAME, "r") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row['Date'].startswith(month):
+                total += float(row['Amount'])
+                count += 1
+
+    if count == 0:
+        print("No expenses found for that month.")
+    else:
+        print(f"📅 Total expenses for {month}: ₹{total:.2f}")
+
+def category_summary():
+    """Show total expenses grouped by category."""
+    summary = defaultdict(float)
+    with open(FILE_NAME, "r") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            summary[row['Category']] += float(row['Amount'])
+
+    if not summary:
+        print("No expenses recorded yet.")
+        return
+
+    print("\n📊 Category-wise Summary:")
+    print("=" * 40)
+    for category, total in summary.items():
+        print(f"{category:<15}: ₹{total:.2f}")
+    print("=" * 40)
+
+def main_menu():
+    """Main menu loop."""
+    initialize_file()
+    while True:
+        print("\n========== 💰 Expense Tracker ==========")
+        print("1️⃣  Add Expense")
+        print("2️⃣  View All Expenses")
+        print("3️⃣  Monthly Summary")
+        print("4️⃣  Category Summary")
+        print("5️⃣  Exit")
+        choice = input("Choose an option (1-5): ").strip()
+
+        if choice == '1':
+            add_expense()
+        elif choice == '2':
+            view_expenses()
+        elif choice == '3':
+            monthly_summary()
+        elif choice == '4':
+            category_summary()
+        elif choice == '5':
+            print("👋 Exiting Expense Tracker. Goodbye!")
+            break
+        else:
+            print("❌ Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    main_menu()
