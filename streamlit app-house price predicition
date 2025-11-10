@@ -1,0 +1,161 @@
+# ==========================================================
+# 🏠 HOUSE PRICE PREDICTION DASHBOARD (BY LIPI SHREE.S)
+# ==========================================================
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
+# -----------------------------
+# 1. Page Configuration
+# -----------------------------
+st.set_page_config(page_title="🏠 House Price Prediction", layout="wide")
+
+st.title("🏡 House Price Prediction Dashboard")
+st.markdown("### Developed by **Lipi Shree.S** | Internship Project | November 2025")
+
+# -----------------------------
+# 2. Upload Dataset
+# -----------------------------
+uploaded_file = st.file_uploader("📂 Upload your housing dataset (CSV)", type=["csv"])
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.success("✅ Dataset uploaded successfully!")
+    st.dataframe(df.head())
+
+    # -----------------------------
+    # 3. Identify Target Column
+    # -----------------------------
+    possible_targets = ["price", "Price", "SalePrice", "final_price"]
+    target_col = None
+    for t in possible_targets:
+        if t in df.columns:
+            target_col = t
+            break
+    if not target_col:
+        target_col = st.selectbox("Select the Target Column (Price Column)", df.columns)
+
+    st.write(f"🎯 Target column selected: **{target_col}**")
+
+    # -----------------------------
+    # 4. Feature Engineering
+    # -----------------------------
+    if 'area' in df.columns:
+        df['Price_per_sqft'] = df[target_col] / df['area']
+    if 'year_built' in df.columns:
+        df['House_Age'] = 2025 - df['year_built']
+    if {'full_bath', 'half_bath'}.issubset(df.columns):
+        df['Total_Bathrooms'] = df['full_bath'] + 0.5 * df['half_bath']
+    if {'total_rooms', 'area'}.issubset(df.columns):
+        df['Rooms_Per_Area'] = df['total_rooms'] / df['area']
+
+    # -----------------------------
+    # 5. Split Data
+    # -----------------------------
+    X = df.drop(columns=[target_col])
+    y = np.log1p(df[target_col])  # log transform for stability
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    numeric_features = X.select_dtypes(include=[np.number]).columns
+    categorical_features = X.select_dtypes(exclude=[np.number]).columns
+
+    numeric_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
+    ])
+
+    categorical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
+
+    preprocessor = ColumnTransformer(transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+
+    # -----------------------------
+    # 6. Train Model (XGBoost)
+    # -----------------------------
+    model = XGBRegressor(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=7,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        random_state=42
+    )
+
+    pipe = Pipeline(steps=[('preprocessor', preprocessor), ('model', model)])
+    pipe.fit(X_train, y_train)
+
+    y_pred = np.expm1(pipe.predict(X_test))
+    y_true = np.expm1(y_test)
+
+    # -----------------------------
+    # 7. Model Evaluation
+    # -----------------------------
+    r2 = r2_score(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    mae = mean_absolute_error(y_true, y_pred)
+
+    st.subheader("📊 Model Performance")
+    st.write(f"**R² Score:** {r2:.4f}")
+    st.write(f"**RMSE:** {rmse:.2f}")
+    st.write(f"**MAE:** {mae:.2f}")
+
+    # -----------------------------
+    # 8. Visualization Section
+    # -----------------------------
+    st.subheader("📈 Actual vs Predicted Prices")
+    fig, ax = plt.subplots()
+    sns.scatterplot(x=y_true, y=y_pred, ax=ax, color='orange')
+    ax.set_xlabel("Actual Price")
+    ax.set_ylabel("Predicted Price")
+    ax.set_title("Actual vs Predicted Prices")
+    st.pyplot(fig)
+
+    # -----------------------------
+    # 9. User Input Form for Prediction
+    # -----------------------------
+    st.subheader("💡 Predict a New House Price")
+    input_data = {}
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            input_data[col] = st.selectbox(f"{col}", df[col].unique())
+        else:
+            val = st.number_input(f"{col}", float(X[col].min()), float(X[col].max()), float(X[col].mean()))
+            input_data[col] = val
+
+    input_df = pd.DataFrame([input_data])
+    if st.button("🔮 Predict Price"):
+        pred_price = np.expm1(pipe.predict(input_df))[0]
+        st.success(f"🏡 Predicted House Price: **₹ {pred_price:,.2f}**")
+
+    # -----------------------------
+    # 10. Feature Importance
+    # -----------------------------
+    st.subheader("📊 Feature Importance (XGBoost)")
+    xgb_model = pipe.named_steps['model']
+    importance = xgb_model.feature_importances_
+    fig_imp, ax_imp = plt.subplots(figsize=(8,5))
+    ax_imp.bar(range(len(importance)), importance, color='teal')
+    ax_imp.set_title("Feature Importance")
+    st.pyplot(fig_imp)
+
+    # -----------------------------
+    # 11. Footer
+    # -----------------------------
+    st.markdown("---")
+    st.markdown("**Developed by Lipi Shree.S | Internship Project | November 2025**")
+else:
+    st.info("👆 Upload your housing dataset (CSV) to begin.")
