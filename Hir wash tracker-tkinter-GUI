@@ -1,0 +1,75 @@
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+import json
+import os
+
+FILE_NAME = "hair_wash_log.json"
+
+# Load data if available
+def load_data():
+    if os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "r") as file:
+            return json.load(file)
+    return {"last_wash": None, "notes": []}
+
+# Save data to file
+def save_data(data):
+    with open(FILE_NAME, "w") as file:
+        json.dump(data, file, indent=4)
+
+# Mark today's wash
+def mark_wash():
+    data["last_wash"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    note = note_entry.get().strip()
+    if note:
+        data["notes"].append({"date": data["last_wash"], "note": note})
+    save_data(data)
+    update_status()
+    note_entry.delete(0, tk.END)
+    messagebox.showinfo("Saved", "Hair wash logged successfully! 💧")
+
+# Show stats
+def update_status():
+    last = data.get("last_wash")
+    if last:
+        last_date = datetime.strptime(last, "%Y-%m-%d %H:%M")
+        days_since = (datetime.now() - last_date).days
+        status_label.config(
+            text=f"🗓 Last washed on: {last_date.strftime('%b %d, %Y')}\n💆 {days_since} day(s) since last wash."
+        )
+    else:
+        status_label.config(text="No wash day recorded yet 🫣")
+
+# View past notes
+def view_notes():
+    if not data["notes"]:
+        messagebox.showinfo("Notes", "No past notes yet.")
+        return
+    notes_text = "\n\n".join([f"{n['date']}: {n['note']}" for n in data["notes"]])
+    messagebox.showinfo("Hair Wash Notes", notes_text)
+
+# Setup GUI
+root = tk.Tk()
+root.title("💖 Hair Wash Tracker")
+root.geometry("360x400")
+root.config(bg="#F8E8EE")
+
+data = load_data()
+
+title = tk.Label(root, text="💆‍♀️ Hair Wash Tracker", font=("Arial Rounded MT Bold", 16), bg="#F8E8EE", fg="#A3528A")
+title.pack(pady=20)
+
+status_label = tk.Label(root, text="", font=("Arial", 11), bg="#F8E8EE", fg="#333")
+status_label.pack(pady=10)
+
+note_entry = tk.Entry(root, width=35, font=("Arial", 11))
+note_entry.pack(pady=10)
+note_entry.insert(0, "Add note (optional)...")
+
+tk.Button(root, text="💧 Mark Wash Today", command=mark_wash, bg="#A3528A", fg="white", font=("Arial", 11), relief="groove").pack(pady=10)
+tk.Button(root, text="📝 View Past Notes", command=view_notes, bg="#F497B6", fg="white", font=("Arial", 11), relief="groove").pack(pady=5)
+tk.Button(root, text="Exit", command=root.quit, bg="#D98880", fg="white", font=("Arial", 11), relief="groove").pack(pady=10)
+
+update_status()
+root.mainloop()
